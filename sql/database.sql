@@ -2,12 +2,10 @@
 -- Created for Arusha Technical College Final Year Project
 -- Student: Vaileth Aloyce Mkaakaa (23051012318)
 
--- Drop existing database if exists
-DROP DATABASE IF EXISTS crmd_db;
+-- NOTE: Hosted MySQL often disables DROP/CREATE DATABASE.
+-- Create the database manually in the host panel, then import this SQL.
+-- Therefore, database-level statements are removed.
 
--- Create database
-CREATE DATABASE crmd_db;
-USE crmd_db;
 
 -- =============================================
 -- TABLE: users
