@@ -13,7 +13,9 @@
 function calculate_risk_level($likelihood, $impact) {
     $score = $likelihood * $impact;
     
-    if ($score >= 15) {
+    if ($score >= 20) {
+        return 'Critical';
+    } elseif ($score >= 15) {
         return 'High';
     } elseif ($score >= 6) {
         return 'Medium';
@@ -272,6 +274,7 @@ function format_date($date) {
  */
 function get_risk_badge_class($level) {
     $classes = [
+        'Critical' => 'badge-critical',
         'High' => 'badge-danger',
         'Medium' => 'badge-warning',
         'Low' => 'badge-success'
@@ -284,6 +287,7 @@ function get_risk_badge_class($level) {
  */
 function get_severity_badge_class($severity) {
     $classes = [
+        'Critical' => 'badge-critical',
         'High' => 'badge-danger',
         'Medium' => 'badge-warning',
         'Low' => 'badge-info'

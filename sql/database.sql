@@ -14,7 +14,9 @@ CREATE TABLE users (
     id INT PRIMARY KEY AUTO_INCREMENT,
     username VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
-    role ENUM('admin', 'viewer') NOT NULL DEFAULT 'viewer',
+    role ENUM('admin', 'analyst', 'viewer') NOT NULL DEFAULT 'viewer',
+    last_login TIMESTAMP NULL,
+    failed_login_attempts INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -28,7 +30,7 @@ CREATE TABLE risks (
     description TEXT NOT NULL,
     likelihood INT NOT NULL CHECK (likelihood >= 1 AND likelihood <= 5),
     impact INT NOT NULL CHECK (impact >= 1 AND impact <= 5),
-    risk_level ENUM('Low', 'Medium', 'High') NOT NULL,
+    risk_level ENUM('Low', 'Medium', 'High', 'Critical') NOT NULL,
     status ENUM('Open', 'Mitigated', 'Closed') NOT NULL DEFAULT 'Open',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -44,13 +46,42 @@ CREATE TABLE incidents (
     title VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
     incident_date DATE NOT NULL,
-    severity ENUM('High', 'Medium', 'Low') NOT NULL,
+    severity ENUM('Critical', 'High', 'Medium', 'Low') NOT NULL,
     resolved BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_severity (severity),
     INDEX idx_resolved (resolved),
     INDEX idx_date (incident_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =============================================
+-- TABLE: notifications
+-- =============================================
+CREATE TABLE notifications (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NULL,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    link VARCHAR(500) DEFAULT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user_read (user_id, is_read),
+    INDEX idx_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =============================================
+-- TABLE: login_attempts
+-- =============================================
+CREATE TABLE login_attempts (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(100) NOT NULL,
+    ip_address VARCHAR(45) DEFAULT NULL,
+    user_agent VARCHAR(500) DEFAULT NULL,
+    success BOOLEAN DEFAULT FALSE,
+    attempted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_username (username),
+    INDEX idx_attempted_at (attempted_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =============================================
@@ -61,6 +92,7 @@ CREATE TABLE incidents (
 INSERT INTO users (username, password_hash, role) VALUES 
 ('admin', '$2y$10$h3dv7hYsEBiT63mcbnzSGewKtr/flNH3k.n2nqRM4h04LXUuWToGO', 'admin'),
 ('viewer', '$2y$10$KN3KCCeYXBIG5cBdZEvrYOdeqsdQGqGREa1Fx0Hu0wcaqVwAv6jlK', 'viewer'),
+('analyst', '$2y$10$W7D7afDhrMAq94rekwqG2.B6XjrpYdj8Zkk941Xo/Qo37M8hpUejO', 'analyst'),
 ('manager', '$2y$10$h3dv7hYsEBiT63mcbnzSGewKtr/flNH3k.n2nqRM4h04LXUuWToGO', 'admin');
 
 -- Insert Risks (with auto-calculated risk levels)

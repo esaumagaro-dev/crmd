@@ -8,13 +8,20 @@ let riskLevelChart = null;
 let incidentsChartInstance = null;
 
 /**
- * Initialize dashboard charts
+ * Initialize dashboard charts via API (for refresh only)
  */
 function initializeDashboardCharts() {
     // Check if we're on the dashboard page
     if (document.getElementById('riskLevelChart')) {
         loadChartData();
     }
+}
+
+/**
+ * Check if inline charts are rendered (page has PHP-rendered charts)
+ */
+function hasInlineCharts() {
+    return document.querySelector('script[data-inline-charts]') !== null;
 }
 
 /**
@@ -37,19 +44,24 @@ function loadChartData() {
  * Render Risk Level Chart (Pie Chart)
  */
 function renderRiskLevelChart(data) {
-    const ctx = document.getElementById('riskLevelChart').getContext('2d');
+    const canvas = document.getElementById('riskLevelChart');
+    const ctx = canvas.getContext('2d');
     
     // Destroy existing chart if it exists
     if (riskLevelChart) {
         riskLevelChart.destroy();
     }
+    const existingChart = Chart.getChart(canvas);
+    if (existingChart) {
+        existingChart.destroy();
+    }
     
     riskLevelChart = new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: ['High Risk', 'Medium Risk', 'Low Risk'],
+            labels: ['Critical Risk', 'High Risk', 'Medium Risk', 'Low Risk'],
             datasets: [{
-                data: [data.high || 0, data.medium || 0, data.low || 0],
+                data: [data.critical || 0, data.high || 0, data.medium || 0, data.low || 0],
                 backgroundColor: [
                     'rgba(239, 68, 68, 0.82)',
                     'rgba(245, 158, 11, 0.82)',
@@ -101,11 +113,16 @@ function renderRiskLevelChart(data) {
  * Render Incidents per Month Chart (Bar Chart)
  */
 function renderIncidentsChart(data) {
-    const ctx = document.getElementById('incidentsChart').getContext('2d');
+    const canvas = document.getElementById('incidentsChart');
+    const ctx = canvas.getContext('2d');
     
     // Destroy existing chart if it exists
     if (incidentsChartInstance) {
         incidentsChartInstance.destroy();
+    }
+    const existingChart = Chart.getChart(canvas);
+    if (existingChart) {
+        existingChart.destroy();
     }
     
     // Prepare data for last 6 months
@@ -241,8 +258,11 @@ function formatDisplayDate(dateString) {
  * Initialize all forms
  */
 document.addEventListener('DOMContentLoaded', function() {
-    // Initialize dashboard charts if on dashboard page
-    initializeDashboardCharts();
+    // If inline charts are already rendered (from PHP), skip initial API load
+    // Only set up the 5-minute refresh for updated data
+    if (document.getElementById('riskLevelChart') && !hasInlineCharts()) {
+        initializeDashboardCharts();
+    }
     
     // Add form validation listeners
     const forms = document.querySelectorAll('form');

@@ -6,8 +6,11 @@
 
 $page_title = 'Risk Management';
 
-require_once __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/config/database.php';
+require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/functions.php';
 require_login();
+require_once __DIR__ . '/includes/header.php';
 
 $action = $_GET['action'] ?? 'list';
 $risk = null;
@@ -305,16 +308,16 @@ if (($action === 'edit' || $action === 'view') && isset($_GET['id'])) {
                         <p class="small text-muted mb-3">Risk level is automatically calculated based on:</p>
                         <table class="table table-sm">
                             <tr>
-                                <td><strong>Likelihood × Impact</strong></td>
+                                <td><strong>Likelihood x Impact</strong></td>
                             </tr>
                             <tr class="table-danger">
-                                <td><strong>High Risk:</strong> ≥ 15</td>
+                                <td><strong>High Risk:</strong> >= 15</td>
                             </tr>
                             <tr class="table-warning">
                                 <td><strong>Medium Risk:</strong> 6-14</td>
                             </tr>
                             <tr class="table-success">
-                                <td><strong>Low Risk:</strong> ≤ 5</td>
+                                <td><strong>Low Risk:</strong> <= 5</td>
                             </tr>
                         </table>
                     </div>

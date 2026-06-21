@@ -30,6 +30,7 @@ try {
     $riskData = $stmt->fetchAll(PDO::FETCH_KEY_PAIR);
     
     $riskByLevel = [
+        'critical' => (int)($riskData['Critical'] ?? 0),
         'high' => (int)($riskData['High'] ?? 0),
         'medium' => (int)($riskData['Medium'] ?? 0),
         'low' => (int)($riskData['Low'] ?? 0)
