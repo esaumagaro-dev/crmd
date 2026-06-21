@@ -32,10 +32,13 @@ CREATE TABLE risks (
     impact INT NOT NULL CHECK (impact >= 1 AND impact <= 5),
     risk_level ENUM('Low', 'Medium', 'High', 'Critical') NOT NULL,
     status ENUM('Open', 'Mitigated', 'Closed') NOT NULL DEFAULT 'Open',
+    created_by INT NULL,
+    updated_by INT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_status (status),
-    INDEX idx_risk_level (risk_level)
+    INDEX idx_risk_level (risk_level),
+    INDEX idx_created_by (created_by)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =============================================
@@ -48,11 +51,14 @@ CREATE TABLE incidents (
     incident_date DATE NOT NULL,
     severity ENUM('Critical', 'High', 'Medium', 'Low') NOT NULL,
     resolved BOOLEAN DEFAULT FALSE,
+    created_by INT NULL,
+    updated_by INT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_severity (severity),
     INDEX idx_resolved (resolved),
-    INDEX idx_date (incident_date)
+    INDEX idx_date (incident_date),
+    INDEX idx_created_by (created_by)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =============================================
@@ -85,6 +91,25 @@ CREATE TABLE login_attempts (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =============================================
+-- TABLE: audit_log (tracks all user activities)
+-- =============================================
+CREATE TABLE audit_log (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    username VARCHAR(100) NOT NULL,
+    action VARCHAR(50) NOT NULL,
+    entity_type VARCHAR(50) NOT NULL,
+    entity_id INT NULL,
+    description TEXT NOT NULL,
+    ip_address VARCHAR(45) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_user (user_id),
+    INDEX idx_action (action),
+    INDEX idx_entity (entity_type, entity_id),
+    INDEX idx_created (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =============================================
 -- INSERT SAMPLE DATA
 -- =============================================
 
@@ -96,24 +121,24 @@ INSERT INTO users (username, password_hash, role) VALUES
 ('manager', '$2y$10$h3dv7hYsEBiT63mcbnzSGewKtr/flNH3k.n2nqRM4h04LXUuWToGO', 'admin');
 
 -- Insert Risks (with auto-calculated risk levels)
-INSERT INTO risks (name, description, likelihood, impact, risk_level, status) VALUES 
-('Malware Infection', 'Risk of malware spreading through email attachments and phishing attacks', 4, 4, 'High', 'Open'),
-('Unauthorized Access', 'Potential unauthorized access to sensitive systems due to weak passwords', 3, 5, 'High', 'Open'),
-('Data Breach', 'Exposure of customer and employee personal data through unencrypted databases', 2, 5, 'High', 'Mitigated'),
-('System Downtime', 'Critical systems becoming unavailable due to DDoS attacks or hardware failure', 3, 3, 'Medium', 'Open'),
-('Insider Threat', 'Disgruntled employees or contractors accessing and stealing confidential information', 2, 4, 'Medium', 'Open'),
-('Weak Encryption', 'Use of outdated encryption protocols allowing attackers to intercept data', 2, 3, 'Medium', 'Closed'),
-('Social Engineering', 'Employees tricked into revealing passwords or sensitive information via phone/email', 4, 2, 'Medium', 'Open'),
-('Ransomware Attack', 'Critical files encrypted by ransomware, demanding payment for decryption', 2, 5, 'High', 'Open');
+INSERT INTO risks (name, description, likelihood, impact, risk_level, status, created_by) VALUES 
+('Malware Infection', 'Risk of malware spreading through email attachments and phishing attacks', 4, 4, 'High', 'Open', 1),
+('Unauthorized Access', 'Potential unauthorized access to sensitive systems due to weak passwords', 3, 5, 'High', 'Open', 1),
+('Data Breach', 'Exposure of customer and employee personal data through unencrypted databases', 2, 5, 'High', 'Mitigated', 1),
+('System Downtime', 'Critical systems becoming unavailable due to DDoS attacks or hardware failure', 3, 3, 'Medium', 'Open', 4),
+('Insider Threat', 'Disgruntled employees or contractors accessing and stealing confidential information', 2, 4, 'Medium', 'Open', 3),
+('Weak Encryption', 'Use of outdated encryption protocols allowing attackers to intercept data', 2, 3, 'Medium', 'Closed', 1),
+('Social Engineering', 'Employees tricked into revealing passwords or sensitive information via phone/email', 4, 2, 'Medium', 'Open', 3),
+('Ransomware Attack', 'Critical files encrypted by ransomware, demanding payment for decryption', 2, 5, 'High', 'Open', 1);
 
 -- Insert Incidents
-INSERT INTO incidents (title, description, incident_date, severity, resolved) VALUES 
-('Phishing Email Campaign', 'Employees received phishing emails targeting corporate credentials. 15 users clicked on malicious links.', '2026-04-15', 'High', FALSE),
-('SQL Injection Attempt', 'Attacker attempted to inject SQL code into the web application login form. Attack was blocked by WAF.', '2026-03-20', 'High', TRUE),
-('Accidental Data Exposure', 'Employee accidentally shared production database credentials on public GitHub repository.', '2026-04-02', 'High', TRUE),
-('Network Intrusion Detection', 'IDS detected suspicious network activity from unknown IP addresses in the admin network segment.', '2026-04-10', 'Medium', FALSE),
-('Password Spray Attack', 'Attacker attempted to guess common passwords for multiple user accounts. Failed login attempts blocked.', '2026-04-08', 'Medium', TRUE),
-('Unauthorized USB Device', 'Unknown USB device connected to secure workstation. Device was quarantined and analyzed.', '2026-03-28', 'Medium', TRUE);
+INSERT INTO incidents (title, description, incident_date, severity, resolved, created_by) VALUES 
+('Phishing Email Campaign', 'Employees received phishing emails targeting corporate credentials. 15 users clicked on malicious links.', '2026-04-15', 'High', FALSE, 3),
+('SQL Injection Attempt', 'Attacker attempted to inject SQL code into the web application login form. Attack was blocked by WAF.', '2026-03-20', 'High', TRUE, 1),
+('Accidental Data Exposure', 'Employee accidentally shared production database credentials on public GitHub repository.', '2026-04-02', 'High', TRUE, 1),
+('Network Intrusion Detection', 'IDS detected suspicious network activity from unknown IP addresses in the admin network segment.', '2026-04-10', 'Medium', FALSE, 2),
+('Password Spray Attack', 'Attacker attempted to guess common passwords for multiple user accounts. Failed login attempts blocked.', '2026-04-08', 'Medium', TRUE, 3),
+('Unauthorized USB Device', 'Unknown USB device connected to secure workstation. Device was quarantined and analyzed.', '2026-03-28', 'Medium', TRUE, 2);
 
 -- =============================================
 -- CREATE INDEXES FOR PERFORMANCE

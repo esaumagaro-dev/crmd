@@ -16,6 +16,8 @@ $action = $_GET['action'] ?? 'list';
 $incident = null;
 $error = '';
 $success = '';
+$user_id = $_SESSION['user_id'] ?? null;
+$username = $_SESSION['username'] ?? 'unknown';
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -36,7 +38,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (empty($title) || empty($description) || empty($incident_date) || empty($severity)) {
                 $error = 'Please fill in all required fields.';
             } else {
-                if (add_incident($pdo, $title, $description, $incident_date, $severity, $resolved)) {
+                $new_id = add_incident($pdo, $title, $description, $incident_date, $severity, $resolved, $user_id);
+                if ($new_id) {
+                    log_activity($pdo, $user_id, $username, 'create_incident', 'incident', $new_id, "Reported incident: $title");
                     $success = 'Incident added successfully!';
                     $action = 'list';
                 } else {
@@ -54,7 +58,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (empty($title) || empty($description) || empty($incident_date) || empty($severity)) {
                 $error = 'Please fill in all required fields.';
             } else {
-                if (update_incident($pdo, $id, $title, $description, $incident_date, $severity, $resolved)) {
+                if (update_incident($pdo, $id, $title, $description, $incident_date, $severity, $resolved, $user_id)) {
+                    log_activity($pdo, $user_id, $username, 'update_incident', 'incident', $id, "Updated incident: $title");
                     $success = 'Incident updated successfully!';
                     $action = 'list';
                 } else {
@@ -63,7 +68,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         } elseif ($action === 'delete') {
             $id = (int)($_POST['id'] ?? 0);
+            $incident_title = get_incident($pdo, $id)['title'] ?? 'Unknown';
             if (delete_incident($pdo, $id)) {
+                log_activity($pdo, $user_id, $username, 'delete_incident', 'incident', $id, "Deleted incident: $incident_title");
                 $success = 'Incident deleted successfully!';
                 $action = 'list';
             } else {
@@ -116,12 +123,17 @@ if (($action === 'edit' || $action === 'view') && isset($_GET['id'])) {
                             <th>Date</th>
                             <th>Severity</th>
                             <th>Status</th>
+                            <th>Reported By</th>
                             <th style="width: 120px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php 
-                        $incidents = get_all_incidents($pdo);
+                        if (is_admin()) {
+                            $incidents = get_all_incidents($pdo);
+                        } else {
+                            $incidents = get_user_incidents($pdo, $user_id);
+                        }
                         if (!empty($incidents)): 
                             foreach ($incidents as $inc):
                         ?>
@@ -130,6 +142,7 @@ if (($action === 'edit' || $action === 'view') && isset($_GET['id'])) {
                                 <td><?php echo $inc['incident_date']; ?></td>
                                 <td><span class="badge <?php echo get_severity_badge_class($inc['severity']); ?>"><?php echo $inc['severity']; ?></span></td>
                                 <td><span class="badge bg-secondary"><?php echo $inc['resolved'] ? 'Resolved' : 'Unresolved'; ?></span></td>
+                                <td><small class="text-muted"><?php echo esc($inc['creator_name'] ?? 'System'); ?></small></td>
                                 <td>
                                     <a href="?action=view&id=<?php echo $inc['id']; ?>" class="btn btn-sm btn-info"><i class="fas fa-eye"></i></a>
                                     <?php if (is_admin()): ?>
@@ -139,7 +152,7 @@ if (($action === 'edit' || $action === 'view') && isset($_GET['id'])) {
                                 </td>
                             </tr>
                         <?php endforeach; else: ?>
-                            <tr><td colspan="5" class="text-center text-muted py-4"><i class="fas fa-inbox fa-2x mb-2"></i><br>No incidents recorded yet.</td></tr>
+                            <tr><td colspan="6" class="text-center text-muted py-4"><i class="fas fa-inbox fa-2x mb-2"></i><br>No incidents recorded yet.</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>

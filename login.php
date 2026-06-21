@@ -6,6 +6,7 @@
 
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/functions.php';
 
 if (is_logged_in()) {
     header('Location: index.php');
@@ -37,7 +38,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (PDOException $e) {
             // Silent fail
         }
-        
+
+        // Log successful login to audit log
+        log_activity($pdo, $_SESSION['user_id'], $_SESSION['username'], 'login', 'user', null, "User logged in: {$_SESSION['username']}");
+
         header('Location: index.php?welcome=1');
         exit;
     } else {

@@ -16,6 +16,8 @@ $action = $_GET['action'] ?? 'list';
 $risk = null;
 $error = '';
 $success = '';
+$user_id = $_SESSION['user_id'] ?? null;
+$username = $_SESSION['username'] ?? 'unknown';
 
 // Handle form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -39,7 +41,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (empty($name) || empty($description) || $likelihood < 1 || $likelihood > 5 || $impact < 1 || $impact > 5) {
                 $error = 'Please fill in all fields correctly.';
             } else {
-                if (add_risk($pdo, $name, $description, $likelihood, $impact, $status)) {
+                $new_id = add_risk($pdo, $name, $description, $likelihood, $impact, $status, $user_id);
+                if ($new_id) {
+                    log_activity($pdo, $user_id, $username, 'create_risk', 'risk', $new_id, "Created risk: $name");
                     $success = 'Risk added successfully!';
                     $action = 'list';
                 } else {
@@ -58,7 +62,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if (empty($name) || empty($description) || $likelihood < 1 || $likelihood > 5 || $impact < 1 || $impact > 5) {
                 $error = 'Please fill in all fields correctly.';
             } else {
-                if (update_risk($pdo, $id, $name, $description, $likelihood, $impact, $status)) {
+                if (update_risk($pdo, $id, $name, $description, $likelihood, $impact, $status, $user_id)) {
+                    log_activity($pdo, $user_id, $username, 'update_risk', 'risk', $id, "Updated risk: $name");
                     $success = 'Risk updated successfully!';
                     $action = 'list';
                 } else {
@@ -68,7 +73,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($action === 'delete') {
             // Delete risk
             $id = (int)($_POST['id'] ?? 0);
+            $risk_name = get_risk($pdo, $id)['name'] ?? 'Unknown';
             if (delete_risk($pdo, $id)) {
+                log_activity($pdo, $user_id, $username, 'delete_risk', 'risk', $id, "Deleted risk: $risk_name");
                 $success = 'Risk deleted successfully!';
                 $action = 'list';
             } else {
@@ -133,12 +140,17 @@ if (($action === 'edit' || $action === 'view') && isset($_GET['id'])) {
                             <th>Impact</th>
                             <th>Risk Level</th>
                             <th>Status</th>
+                            <th>Created By</th>
                             <th style="width: 150px;">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php 
-                        $risks = get_all_risks($pdo);
+                        if (is_admin()) {
+                            $risks = get_all_risks($pdo);
+                        } else {
+                            $risks = get_user_risks($pdo, $user_id);
+                        }
                         if (!empty($risks)): 
                             foreach ($risks as $r):
                         ?>
@@ -160,6 +172,9 @@ if (($action === 'edit' || $action === 'view') && isset($_GET['id'])) {
                                 </td>
                                 <td>
                                     <span class="badge bg-secondary"><?php echo $r['status']; ?></span>
+                                </td>
+                                <td>
+                                    <small class="text-muted"><?php echo esc($r['creator_name'] ?? 'System'); ?></small>
                                 </td>
                                 <td>
                                     <a href="?action=view&id=<?php echo $r['id']; ?>" class="btn btn-sm btn-info">
@@ -185,7 +200,7 @@ if (($action === 'edit' || $action === 'view') && isset($_GET['id'])) {
                         else:
                         ?>
                             <tr>
-                                <td colspan="6" class="text-center text-muted py-4">
+                                <td colspan="7" class="text-center text-muted py-4">
                                     <i class="fas fa-inbox fa-2x mb-2"></i><br>
                                     No risks recorded yet.
                                 </td>

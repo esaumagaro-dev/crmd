@@ -12,40 +12,43 @@ require_once __DIR__ . '/includes/functions.php';
 require_login();
 require_once __DIR__ . '/includes/header.php';
 
-// Get dashboard data
-$stats = get_dashboard_stats($pdo);
-$risks = get_all_risks($pdo);
-$incidents = get_all_incidents($pdo);
+$user_id = $_SESSION['user_id'] ?? null;
+$is_admin = is_admin();
+$is_analyst = ($_SESSION['role'] ?? '') === 'analyst';
 
-// Calculate metrics
+// Role-based data loading
+if ($is_admin) {
+    $stats = get_dashboard_stats($pdo);
+    $risks = get_all_risks($pdo);
+    $incidents = get_all_incidents($pdo);
+    $activities = get_audit_log($pdo, 15);
+} else {
+    $stats = get_dashboard_stats($pdo, $user_id);
+    $risks = get_user_risks($pdo, $user_id);
+    $incidents = get_user_incidents($pdo, $user_id);
+    $activities = get_audit_log($pdo, 15, $user_id);
+}
+
 $total_risks = count($risks);
 $total_incidents = count($incidents);
-$open_risks = count(array_filter($risks, fn($risk) => $risk['status'] === 'Open'));
-$mitigated_risks = count(array_filter($risks, fn($risk) => $risk['status'] === 'Mitigated'));
-$closed_risks = count(array_filter($risks, fn($risk) => $risk['status'] === 'Closed'));
+$open_risks = count(array_filter($risks, fn($r) => $r['status'] === 'Open'));
+$mitigated_risks = count(array_filter($risks, fn($r) => $r['status'] === 'Mitigated'));
+$closed_risks = count(array_filter($risks, fn($r) => $r['status'] === 'Closed'));
 $open_incidents = (int)($stats['open_incidents'] ?? 0);
 $resolved_incidents = (int)($stats['resolved_incidents'] ?? 0);
 $high_risks = (int)($stats['high_risks'] ?? 0);
-$critical_risks = count(array_filter($risks, fn($risk) => $risk['risk_level'] === 'Critical'));
-$high_incidents = count(array_filter($incidents, fn($incident) => $incident['severity'] === 'High' && !$incident['resolved']));
-$critical_incidents = count(array_filter($incidents, fn($incident) => $incident['severity'] === 'Critical' && !$incident['resolved']));
+$critical_risks = count(array_filter($risks, fn($r) => $r['risk_level'] === 'Critical'));
+$high_incidents = count(array_filter($incidents, fn($i) => $i['severity'] === 'High' && !$i['resolved']));
+$critical_incidents = count(array_filter($incidents, fn($i) => $i['severity'] === 'Critical' && !$i['resolved']));
 
-// Calculate risk exposure score
-$risk_score_total = array_sum(array_map(fn($risk) => (int)$risk['likelihood'] * (int)$risk['impact'], $risks));
+$risk_score_total = array_sum(array_map(fn($r) => (int)$r['likelihood'] * (int)$r['impact'], $risks));
 $max_risk_score = max($total_risks * 25, 1);
 $exposure_score = (int)round(($risk_score_total / $max_risk_score) * 100);
 $exposure_width = min($exposure_score, 100);
-
-// Calculate control coverage
 $control_coverage = $total_risks > 0 ? (int)round((($mitigated_risks + $closed_risks) / $total_risks) * 100) : 0;
-
-// Calculate incident pressure
 $incident_pressure = $total_incidents > 0 ? (int)round(($open_incidents / $total_incidents) * 100) : 0;
-
-// Critical watchlist
 $critical_watchlist = $critical_risks + $high_risks + $critical_incidents + $high_incidents;
 
-// Risk distribution for charts
 $risk_distribution = [
     'Critical' => $critical_risks,
     'High' => $high_risks - $critical_risks,
@@ -53,7 +56,6 @@ $risk_distribution = [
     'Low' => count(array_filter($risks, fn($r) => $r['risk_level'] === 'Low'))
 ];
 
-// Incident severity distribution
 $incident_distribution = [
     'Critical' => $critical_incidents,
     'High' => $high_incidents,
@@ -61,12 +63,10 @@ $incident_distribution = [
     'Low' => count(array_filter($incidents, fn($i) => $i['severity'] === 'Low' && !$i['resolved']))
 ];
 
-// Top risks by score
 $top_risks = $risks;
 usort($top_risks, fn($a, $b) => (($b['likelihood'] * $b['impact']) <=> ($a['likelihood'] * $a['impact'])));
 $top_risks = array_slice($top_risks, 0, 5);
 
-// Latest events for SIEM stream
 $latest_events = [];
 foreach (array_slice($incidents, 0, 4) as $incident) {
     $latest_events[] = [
@@ -86,7 +86,6 @@ foreach (array_slice($risks, 0, 3) as $risk) {
 }
 $latest_events = array_slice($latest_events, 0, 8);
 
-// Recent incidents for timeline
 $recent_incidents = array_filter($incidents, fn($i) => !$i['resolved']);
 usort($recent_incidents, fn($a, $b) => strtotime($b['incident_date']) - strtotime($a['incident_date']));
 $recent_incidents = array_slice($recent_incidents, 0, 5);
@@ -97,9 +96,21 @@ $recent_incidents = array_slice($recent_incidents, 0, 5);
     <div class="row align-items-end">
         <div class="col-xl-8">
             <div class="page-kicker">Enterprise Cyber Risk Operations</div>
-            <h1 class="page-title">SOC Command Center</h1>
+            <h1 class="page-title">
+                <?php if ($is_admin): ?>
+                    SOC Command Center
+                <?php elseif ($is_analyst): ?>
+                    Analyst Dashboard
+                <?php else: ?>
+                    My Dashboard
+                <?php endif; ?>
+            </h1>
             <p class="page-subtitle">
-                Real-time monitoring of risk exposure, active incidents, threat intelligence, and security posture.
+                <?php if ($is_admin): ?>
+                    Full oversight of all risks, incidents, and user activities across the organization.
+                <?php else: ?>
+                    Your personal workspace showing risks and incidents you have created.
+                <?php endif; ?>
             </p>
         </div>
         <div class="col-xl-4 mt-3 mt-xl-0">
@@ -125,7 +136,7 @@ $recent_incidents = array_slice($recent_incidents, 0, 5);
 <div class="metric-grid">
     <div class="metric-card critical">
         <div class="metric-header">
-            <span class="metric-label">Critical Alerts</span>
+            <span class="metric-label"><?php echo $is_admin ? 'Critical Alerts' : 'My Critical Alerts'; ?></span>
             <div class="metric-icon">
                 <i class="fas fa-triangle-exclamation"></i>
             </div>
@@ -139,7 +150,7 @@ $recent_incidents = array_slice($recent_incidents, 0, 5);
 
     <div class="metric-card high">
         <div class="metric-header">
-            <span class="metric-label">Open Incidents</span>
+            <span class="metric-label"><?php echo $is_admin ? 'Open Incidents' : 'My Incidents'; ?></span>
             <div class="metric-icon">
                 <i class="fas fa-fire-flame-curved"></i>
             </div>
@@ -152,7 +163,7 @@ $recent_incidents = array_slice($recent_incidents, 0, 5);
 
     <div class="metric-card medium">
         <div class="metric-header">
-            <span class="metric-label">Open Risks</span>
+            <span class="metric-label"><?php echo $is_admin ? 'Open Risks' : 'My Risks'; ?></span>
             <div class="metric-icon">
                 <i class="fas fa-chart-pie"></i>
             </div>
@@ -190,7 +201,7 @@ $recent_incidents = array_slice($recent_incidents, 0, 5);
                 <span class="score-max">/100</span>
             </div>
             <div class="score-bar-container">
-                <div class="score-bar <?php echo $exposure_score > 70 ? 'critical' : ($exposure_score > 40 ? 'high' : 'low'); ?>" 
+                <div class="score-bar <?php echo $exposure_score > 70 ? 'critical' : ($exposure_score > 40 ? 'high' : 'low'); ?>"
                      style="width: <?php echo $exposure_width; ?>%;"></div>
             </div>
             <div class="score-description">
@@ -198,7 +209,7 @@ $recent_incidents = array_slice($recent_incidents, 0, 5);
             </div>
         </div>
     </div>
-    
+
     <div class="col-lg-4">
         <div class="score-card">
             <div class="score-label">Incident Pressure</div>
@@ -209,7 +220,7 @@ $recent_incidents = array_slice($recent_incidents, 0, 5);
                 <span class="score-max">%</span>
             </div>
             <div class="score-bar-container">
-                <div class="score-bar <?php echo $incident_pressure > 50 ? 'high' : 'low'; ?>" 
+                <div class="score-bar <?php echo $incident_pressure > 50 ? 'high' : 'low'; ?>"
                      style="width: <?php echo min($incident_pressure, 100); ?>%;"></div>
             </div>
             <div class="score-description">
@@ -217,7 +228,7 @@ $recent_incidents = array_slice($recent_incidents, 0, 5);
             </div>
         </div>
     </div>
-    
+
     <div class="col-lg-4">
         <div class="score-card">
             <div class="score-label">Control Coverage</div>
@@ -228,7 +239,7 @@ $recent_incidents = array_slice($recent_incidents, 0, 5);
                 <span class="score-max">%</span>
             </div>
             <div class="score-bar-container">
-                <div class="score-bar low" 
+                <div class="score-bar low"
                      style="width: <?php echo min($control_coverage, 100); ?>%;"></div>
             </div>
             <div class="score-description">
@@ -303,13 +314,13 @@ $recent_incidents = array_slice($recent_incidents, 0, 5);
     </div>
 </div>
 
-<!-- Bottom Row: Top Risks and Incident Queue -->
+<!-- Bottom Row: Top Risks and Activity Log -->
 <div class="row g-4">
     <div class="col-xl-5">
         <div class="card h-100">
             <div class="card-header">
                 <i class="fas fa-arrow-trend-up"></i>
-                Highest Risk Scores
+                <?php echo $is_admin ? 'Highest Risk Scores' : 'My Top Risks'; ?>
             </div>
             <div class="card-body">
                 <div class="threat-list">
@@ -325,8 +336,11 @@ $recent_incidents = array_slice($recent_incidents, 0, 5);
                                     <span class="badge badge-secondary" style="font-size: 0.6rem;">
                                         <?php echo esc($risk['status']); ?>
                                     </span>
-                                    L:<?php echo (int)$risk['likelihood']; ?>/5 
+                                    L:<?php echo (int)$risk['likelihood']; ?>/5
                                     I:<?php echo (int)$risk['impact']; ?>/5
+                                    <?php if ($is_admin && !empty($risk['creator_name'])): ?>
+                                        | by <?php echo esc($risk['creator_name']); ?>
+                                    <?php endif; ?>
                                 </div>
                             </div>
                             <span class="badge <?php echo get_risk_badge_class($risk['risk_level']); ?>">
@@ -349,7 +363,7 @@ $recent_incidents = array_slice($recent_incidents, 0, 5);
         <div class="card h-100">
             <div class="card-header">
                 <i class="fas fa-list-check"></i>
-                Active Incident Queue
+                <?php echo $is_admin ? 'Active Incident Queue' : 'My Incidents'; ?>
             </div>
             <div class="card-body">
                 <div class="table-container">
@@ -360,6 +374,9 @@ $recent_incidents = array_slice($recent_incidents, 0, 5);
                                 <th>Date</th>
                                 <th>Severity</th>
                                 <th>Status</th>
+                                <?php if ($is_admin): ?>
+                                    <th>Reported By</th>
+                                <?php endif; ?>
                             </tr>
                         </thead>
                         <tbody>
@@ -381,13 +398,88 @@ $recent_incidents = array_slice($recent_incidents, 0, 5);
                                             <span class="badge badge-danger">Active</span>
                                         <?php endif; ?>
                                     </td>
+                                    <?php if ($is_admin): ?>
+                                        <td>
+                                            <small class="text-muted"><?php echo esc($incident['creator_name'] ?? 'System'); ?></small>
+                                        </td>
+                                    <?php endif; ?>
                                 </tr>
                             <?php endforeach; ?>
                             <?php if (empty($incidents)): ?>
                                 <tr>
-                                    <td colspan="4" class="text-center text-muted py-4">
+                                    <td colspan="<?php echo $is_admin ? 5 : 4; ?>" class="text-center text-muted py-4">
                                         <i class="fas fa-inbox fa-2x mb-2"></i>
                                         <p class="mb-0">No incidents recorded yet.</p>
+                                    </td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- User Activity Log (Admin: all users, Others: own) -->
+<div class="row g-4 mt-1">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <i class="fas fa-clock-rotate-left"></i>
+                <?php if ($is_admin): ?>
+                    Organization Activity Log
+                <?php else: ?>
+                    My Recent Activity
+                <?php endif; ?>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>User</th>
+                                <th>Action</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (!empty($activities)): ?>
+                                <?php foreach ($activities as $log): ?>
+                                    <tr>
+                                        <td><small><?php echo date('M j, H:i', strtotime($log['created_at'])); ?></small></td>
+                                        <td><small><?php echo esc($log['username']); ?></small></td>
+                                        <td>
+                                            <?php
+                                            $action_badge = match ($log['action']) {
+                                                'create_risk' => 'badge bg-success',
+                                                'update_risk' => 'badge bg-info',
+                                                'delete_risk' => 'badge bg-danger',
+                                                'create_incident' => 'badge bg-success',
+                                                'update_incident' => 'badge bg-info',
+                                                'delete_incident' => 'badge bg-danger',
+                                                default => 'badge bg-secondary'
+                                            };
+                                            $action_label = match ($log['action']) {
+                                                'create_risk' => 'Created Risk',
+                                                'update_risk' => 'Updated Risk',
+                                                'delete_risk' => 'Deleted Risk',
+                                                'create_incident' => 'Reported Incident',
+                                                'update_incident' => 'Updated Incident',
+                                                'delete_incident' => 'Deleted Incident',
+                                                default => $log['action']
+                                            };
+                                            ?>
+                                            <span class="<?php echo $action_badge; ?>"><?php echo esc($action_label); ?></span>
+                                        </td>
+                                        <td><small><?php echo esc($log['description']); ?></small></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="4" class="text-center text-muted py-3">
+                                        <i class="fas fa-inbox me-1"></i> No activity recorded yet.
                                     </td>
                                 </tr>
                             <?php endif; ?>
@@ -425,7 +517,6 @@ $recent_incidents = array_slice($recent_incidents, 0, 5);
 <script data-inline-charts>
 // Chart.js configuration
 document.addEventListener('DOMContentLoaded', function() {
-    // Risk Level Distribution Chart
     const riskCtx = document.getElementById('riskLevelChart').getContext('2d');
     new Chart(riskCtx, {
         type: 'doughnut',
@@ -480,7 +571,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Incidents Chart
     const incCtx = document.getElementById('incidentsChart').getContext('2d');
     new Chart(incCtx, {
         type: 'bar',

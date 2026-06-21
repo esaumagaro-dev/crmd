@@ -14,10 +14,17 @@ require_once __DIR__ . '/includes/header.php';
 
 $start_date = $_GET['start_date'] ?? '';
 $end_date = $_GET['end_date'] ?? '';
+$user_id = $_SESSION['user_id'] ?? null;
 
-$all_risks = get_all_risks($pdo);
-$all_incidents = get_all_incidents($pdo);
-$stats = get_dashboard_stats($pdo);
+if (is_admin()) {
+    $all_risks = get_all_risks($pdo);
+    $all_incidents = get_all_incidents($pdo);
+    $stats = get_dashboard_stats($pdo);
+} else {
+    $all_risks = get_user_risks($pdo, $user_id);
+    $all_incidents = get_user_incidents($pdo, $user_id);
+    $stats = get_dashboard_stats($pdo, $user_id);
+}
 
 if ($start_date && $end_date) {
     $all_incidents = array_filter($all_incidents, function($incident) use ($start_date, $end_date) {
@@ -107,6 +114,9 @@ $unresolved_count = count(array_filter($all_incidents, fn($incident) => !$incide
                             <th>Level</th>
                             <th>Status</th>
                             <th>Likelihood x Impact</th>
+                            <?php if (is_admin()): ?>
+                                <th>Created By</th>
+                            <?php endif; ?>
                         </tr>
                     </thead>
                     <tbody>
@@ -117,6 +127,9 @@ $unresolved_count = count(array_filter($all_incidents, fn($incident) => !$incide
                                 <td><span class="badge <?php echo get_risk_badge_class($risk['risk_level']); ?>"><?php echo esc($risk['risk_level']); ?></span></td>
                                 <td><span class="badge bg-secondary"><?php echo esc($risk['status']); ?></span></td>
                                 <td><?php echo (int)$risk['likelihood']; ?> x <?php echo (int)$risk['impact']; ?> = <?php echo (int)$risk['likelihood'] * (int)$risk['impact']; ?></td>
+                                <?php if (is_admin()): ?>
+                                    <td><small><?php echo esc($risk['creator_name'] ?? 'System'); ?></small></td>
+                                <?php endif; ?>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -136,6 +149,9 @@ $unresolved_count = count(array_filter($all_incidents, fn($incident) => !$incide
                             <th>Date</th>
                             <th>Severity</th>
                             <th>Status</th>
+                            <?php if (is_admin()): ?>
+                                <th>Reported By</th>
+                            <?php endif; ?>
                         </tr>
                     </thead>
                     <tbody>
@@ -145,6 +161,9 @@ $unresolved_count = count(array_filter($all_incidents, fn($incident) => !$incide
                                 <td><?php echo esc($incident['incident_date']); ?></td>
                                 <td><span class="badge <?php echo get_severity_badge_class($incident['severity']); ?>"><?php echo esc($incident['severity']); ?></span></td>
                                 <td><span class="badge bg-secondary"><?php echo $incident['resolved'] ? 'Resolved' : 'Unresolved'; ?></span></td>
+                                <?php if (is_admin()): ?>
+                                    <td><small><?php echo esc($incident['creator_name'] ?? 'System'); ?></small></td>
+                                <?php endif; ?>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
