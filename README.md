@@ -1,6 +1,6 @@
 # Cybersecurity Risk Management Dashboard (CRMD)
 
-**A centralized dashboard for monitoring and managing cybersecurity risks**
+**A centralized SOC-style platform for monitoring and managing cybersecurity risks, incidents, and user activities**
 
 - **Student**: Vaileth Aloyce Mkaakaa (23051012318)
 - **Program**: Ordinary Diploma in Cybersecurity and Digital Forensics (NTA Level 06)
@@ -10,58 +10,70 @@
 
 ---
 
-## 📋 Project Overview
+## Project Overview
 
-The Cybersecurity Risk Management Dashboard (CRMD) is a web-based application designed to provide organizations with a centralized platform for monitoring, analyzing, and managing cybersecurity risks. It replaces manual, fragmented approaches with real-time visualization and comprehensive incident tracking.
+The Cybersecurity Risk Management Dashboard (CRMD) is a web-based application that provides organizations with a centralized SOC (Security Operations Center) platform for monitoring, analyzing, and managing cybersecurity risks, tracking incidents, and auditing user activities.
 
 ### Key Features
 
-✅ **User Authentication & Role-Based Access Control (RBAC)**
-- Secure login with session management
-- Admin (full CRUD) and Viewer (read-only) roles
-- 30-minute session timeout
-- CSRF token protection
+**Role-Based Dashboards**
+- **Admin**: Full oversight of all risks, incidents, and user activities across the organization
+- **Analyst**: Personal workspace showing their own created risks, incidents, and activity log
+- **Viewer**: Read-only view of their own contributions and organizational reports
 
-✅ **Risk Management**
-- Record and track cybersecurity risks
-- Auto-calculated risk levels (High/Medium/Low)
+**Authentication & Access Control**
+- Secure login with bcrypt password hashing
+- Three distinct roles: Admin, Analyst, Viewer
+- 30-minute session timeout with auto-logout
+- CSRF token protection on all forms
+- Login attempt logging (successful and failed)
+- Account lockout tracking (failed login attempts)
+
+**Risk Management**
+- Record and track cybersecurity risks with auto-calculated risk levels
+- Risk scoring: Critical (>=20), High (15-19), Medium (6-14), Low (<=5)
 - Filter by status (Open/Mitigated/Closed)
-- Risk scoring based on Likelihood × Impact
+- Track who created and last modified each risk
 
-✅ **Incident Tracking**
-- Log security incidents with severity levels
-- Track resolution status
-- Filter by date range
-- Quick incident management
+**Incident Tracking**
+- Log security incidents with severity levels (Critical/High/Medium/Low)
+- Track resolution status and assignment
+- View reported-by information for accountability
 
-✅ **Data Visualization**
-- Risk distribution pie chart
-- Incident trends (last 6 months)
-- Dashboard widgets with KPIs
-- Real-time data updates via AJAX
+**Activity Audit Log**
+- Complete audit trail of all user actions
+- Admin sees activities across all users
+- Regular users see their own activity history
+- Tracks: create/update/delete for risks and incidents, login/logout events
 
-✅ **Reporting**
-- Comprehensive security reports
-- Printable/PDF export (browser print)
+**Data Visualization**
+- Risk distribution doughnut chart (Critical/High/Medium/Low)
+- Incident severity bar chart
+- SIEM-style event stream
+- Dashboard KPIs and score cards
+
+**Security Reporting**
+- Comprehensive filtered reports
+- Printable/PDF export
 - Date range filtering
-- Risk and incident analytics
+- Risk and incident analytics with creator attribution
 
-✅ **Security Features**
+**Security Features**
 - Prepared statements (PDO) for SQL injection prevention
 - Output escaping (htmlspecialchars) for XSS prevention
 - Password hashing (password_hash/bcrypt)
 - CSRF token validation on all forms
 - Session regeneration after login
+- IP address logging for audit trail
 
-✅ **Responsive UI**
-- Bootstrap 5 framework
-- Mobile-friendly design
-- Collapsible navigation
-- Professional styling
+**Responsive UI**
+- Bootstrap 5 framework with dark SOC theme
+- Mobile-friendly design with collapsible sidebar
+- Professional SOC-style styling
 
 ---
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 | Layer | Technology |
 |-------|-----------|
@@ -75,32 +87,33 @@ The Cybersecurity Risk Management Dashboard (CRMD) is a web-based application de
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 crmd/
 ├── assets/
 │   ├── css/
-│   │   └── style.css           # Custom styling
+│   │   └── style.css           # Dark SOC-themed styling
 │   └── js/
-│       └── dashboard.js        # JavaScript functionality
+│       └── dashboard.js        # Charts, AJAX, utilities
 ├── config/
-│   └── database.php            # Database configuration
+│   └── database.php            # PDO database configuration
 ├── includes/
-│   ├── header.php              # HTML header template
-│   ├── footer.php              # HTML footer template
-│   ├── auth.php                # Authentication functions
-│   └── functions.php           # Utility functions
+│   ├── auth.php                # Authentication, session, CSRF
+│   ├── functions.php           # CRUD operations, audit logging
+│   ├── header.php              # HTML header + sidebar navigation
+│   └── footer.php              # Footer + JS scripts
 ├── api/
-│   └── chart-data.php          # JSON API for charts
+│   └── chart-data.php          # JSON API for chart data
 ├── sql/
-│   └── database.sql            # Database schema & sample data
-├── index.php                   # Dashboard homepage
+│   ├── database.sql            # Schema + sample data
+│   └── database_enhanced.sql   # Enterprise SOC edition schema
+├── index.php                   # Role-based dashboard homepage
 ├── login.php                   # Login page
 ├── logout.php                  # Logout handler
-├── risks.php                   # Risk management
-├── incidents.php               # Incident tracking
-├── reports.php                 # Security reports
+├── risks.php                   # Risk management (role-filtered)
+├── incidents.php               # Incident tracking (role-filtered)
+├── reports.php                 # Security reports (role-filtered)
 ├── Dockerfile                  # Docker configuration
 ├── .gitignore                  # Git ignore rules
 └── README.md                   # This file
@@ -108,243 +121,163 @@ crmd/
 
 ---
 
-## 🚀 Local Setup Instructions
+## Role-Based Access Control
+
+| Feature | Admin | Analyst | Viewer |
+|---------|-------|---------|--------|
+| View all risks/incidents | Yes | Own only | Own only |
+| Create risks | Yes | No | No |
+| Edit/Delete risks | Yes | No | No |
+| Create incidents | Yes | No | No |
+| Edit/Delete incidents | Yes | No | No |
+| View activity log | All users | Own only | Own only |
+| Generate reports | Yes (all data) | Yes (own data) | Yes (own data) |
+| Dashboard scope | Global | Personal | Personal |
+
+---
+
+## Local Setup Instructions
 
 ### Prerequisites
 
 - **XAMPP** or **WAMP** (Apache + PHP 7.4+ + MySQL)
 - **phpMyAdmin** (comes with XAMPP/WAMP)
-- Web browser (Chrome, Firefox, Safari, Edge)
+- Web browser
 
-### Step 1: Clone or Download the Project
+### Step 1: Clone or Download
 
 ```bash
-# Clone from GitHub
-git clone https://github.com/yourusername/crmd.git
+git clone https://github.com/esaumagaro-dev/crmd.git
 cd crmd
-
-# OR copy files to htdocs
-# XAMPP: C:\xampp\htdocs\crmd
-# WAMP: C:\wamp64\www\crmd
 ```
+
+Copy to XAMPP: `C:\xampp\htdocs\crmd`
 
 ### Step 2: Import Database
 
 1. Open **phpMyAdmin**: `http://localhost/phpmyadmin`
-2. Click **"New"** to create a new database
-3. Name it: **`crmd_db`**
-4. Click **"Create"**
-5. Select the `crmd_db` database
-6. Click the **"Import"** tab
-7. Choose the file: `sql/database.sql`
-8. Click **"Import"**
-
-✅ Database is now set up with sample data!
+2. Create a new database named **`crmd_db`**
+3. Select the database, click **"Import"** tab
+4. Choose `sql/database.sql` and click **"Import"**
 
 ### Step 3: Configure Database Connection
 
-Edit `config/database.php` if your MySQL credentials differ:
+Edit `config/database.php` if needed:
 
 ```php
-$db_host = 'localhost';      // Usually localhost
-$db_name = 'crmd_db';        // Database name
-$db_user = 'root';           // MySQL username
-$db_pass = '';               // MySQL password (empty for XAMPP/WAMP default)
+$db_host = 'localhost';
+$db_name = 'crmd_db';
+$db_user = 'root';
+$db_pass = '';
 ```
 
 ### Step 4: Access the Application
 
-Open your browser and navigate to:
-
-```
-http://localhost/crmd
-```
-
-You will be redirected to the login page.
+Navigate to: `http://localhost/crmd`
 
 ### Step 5: Login
-
-Use the default credentials:
 
 | Role | Username | Password |
 |------|----------|----------|
 | Admin | `admin` | `admin123` |
 | Viewer | `viewer` | `viewer123` |
-
-> **Important**: Change these credentials in production!
+| Analyst | `analyst` | `analyst123` |
+| Manager | `manager` | `admin123` |
 
 ---
 
-## 📊 Default Sample Data
+## Sample Data
 
 The database includes:
 
-- **2 Users**: admin (admin123) and viewer (viewer123)
-- **8 Risks**: ranging from High to Low levels
-- **6 Incidents**: with various severity levels
-
-These are provided for testing and demonstration purposes.
+- **4 Users**: admin, viewer, analyst, manager
+- **8 Risks**: with varying levels and assigned creators
+- **6 Incidents**: with severity levels and reporter attribution
 
 ---
 
-## 🔐 Security Features Implemented
+## Database Schema
+
+### Tables
+
+| Table | Description |
+|-------|-------------|
+| **users** | User accounts with roles (admin, analyst, viewer), login tracking, and failed attempt counter |
+| **risks** | Risk register with auto-calculated levels, ownership tracking (created_by/updated_by) |
+| **incidents** | Incident records with severity levels, resolution status, and reporter attribution |
+| **notifications** | User notification system (scoped per user or global) |
+| **login_attempts** | Login audit trail (success/failure, IP, user agent) |
+| **audit_log** | Full activity audit trail for all CRUD operations and authentication events |
+
+---
+
+## Security Features
 
 ### SQL Injection Prevention
-- ✅ All queries use prepared statements (PDO)
-- ✅ No string concatenation in SQL
+- All queries use PDO prepared statements
+- No string concatenation in SQL
 
-### Cross-Site Scripting (XSS) Prevention
-- ✅ Output escaped with `htmlspecialchars()`
-- ✅ HTML entities converted
+### XSS Prevention
+- All output escaped with `htmlspecialchars()` via `esc()` helper
+- HTML entities properly encoded
 
-### Cross-Site Request Forgery (CSRF) Prevention
-- ✅ CSRF tokens generated for all forms
-- ✅ Tokens validated on form submission
+### CSRF Protection
+- Random 32-byte CSRF tokens on all forms
+- Timing-safe comparison with `hash_equals()`
 
-### Authentication & Session
-- ✅ Passwords hashed with `password_hash()` (bcrypt)
-- ✅ Sessions regenerated after login
-- ✅ 30-minute auto-logout on inactivity
-- ✅ Secure session handling
+### Authentication
+- Passwords hashed with `password_hash()` (bcrypt)
+- Session regeneration after login
+- 30-minute inactivity timeout
+- Failed login attempt tracking
 
 ### Authorization (RBAC)
-- ✅ Admin: Full CRUD operations
-- ✅ Viewer: Read-only access
-- ✅ Protected routes require login
+- Admin: Full CRUD operations across all data
+- Analyst/Viewer: Scoped to own data only
+- Server-side enforcement on all actions
 
 ---
 
-## 📝 Usage Guide
+## Usage Guide
 
 ### Dashboard
-- **Home page** showing key metrics and charts
-- Quick access to Risks, Incidents, and Reports
-- Real-time data visualization
+
+- **Admin**: SOC Command Center with global KPIs, all risks/incidents, and Organization Activity Log
+- **Analyst**: Analyst Dashboard showing personal contributions and activity
+- **Viewer**: My Dashboard with read-only view of personal scope
 
 ### Risk Management
-1. **View**: Click "Risks" to see all recorded risks
+
+1. **View**: All risks (admin) or My Risks (analyst/viewer)
 2. **Add** (Admin only): Click "Add New Risk"
    - Fill in Name, Description
    - Set Likelihood (1-5) and Impact (1-5)
    - Risk Level auto-calculates
-3. **Edit** (Admin only): Click the edit icon
-4. **Delete** (Admin only): Click delete and confirm
+3. **Edit/Delete** (Admin only)
 
 **Risk Level Calculation**:
-- High Risk: Likelihood × Impact ≥ 15
-- Medium Risk: Likelihood × Impact 6-14
-- Low Risk: Likelihood × Impact ≤ 5
+- Critical: Likelihood x Impact >= 20
+- High: Likelihood x Impact >= 15
+- Medium: Likelihood x Impact 6-14
+- Low: Likelihood x Impact <= 5
 
 ### Incident Tracking
-1. **Report**: Click "Report Incident"
-2. **Fill Details**:
-   - Title, Description, Date
-   - Severity (High/Medium/Low)
-   - Mark as Resolved (optional)
+
+1. **Report** (Admin only): Click "Report Incident"
+2. **Fill Details**: Title, Description, Date, Severity
 3. **Manage**: Edit or delete incidents (Admin only)
-4. **Track**: View resolution status
+4. **Attribution**: Each incident tracks who reported it
 
 ### Reports
+
 1. **Generate**: Click "Reports" menu
-2. **Filter** (Optional):
-   - Select start and end dates
-   - Click "Apply Filter"
-3. **View**: Summary statistics, risk analysis, incident analysis
+2. **Filter** (Optional): Select date range
+3. **View**: Role-scoped statistics with creator attribution
 4. **Print**: Click "Print" button or Ctrl+P
 
 ---
 
-## 🌐 Deployment to Render.com
-
-### Step 1: Create GitHub Repository
-
-```bash
-cd crmd
-git init
-git add .
-git commit -m "Initial commit: CRMD application"
-git branch -M main
-git remote add origin https://github.com/yourusername/crmd.git
-git push -u origin main
-```
-
-### Step 2: Set Up Remote Database
-
-Choose one of these free options:
-
-**Option A: Aiven (Recommended)**
-1. Go to https://aiven.io
-2. Sign up (free tier available)
-3. Create a PostgreSQL database (or MySQL if preferred)
-4. Get connection details:
-   - Host, Port, Database, Username, Password
-
-**Option B: FreeMySQL**
-1. Go to https://www.freemysqlhosting.net
-2. Register and create a database
-3. Note the credentials
-
-**Option C: Clever Cloud**
-1. https://www.clever-cloud.com
-2. Create MySQL addon
-3. Get connection string
-
-### Step 3: Connect Render to GitHub
-
-1. Go to https://render.com
-2. Click "New +"
-3. Select "Web Service"
-4. Connect your GitHub repository
-5. Select the CRMD repository
-
-### Step 4: Configure Render Deployment
-
-**Settings**:
-
-```
-Name: crmd
-Environment: Docker
-Branch: main
-```
-
-### Step 5: Set Environment Variables
-
-In Render dashboard, add:
-
-```
-DB_HOST=<your-database-host>
-DB_NAME=<your-database-name>
-DB_USER=<your-database-user>
-DB_PASS=<your-database-password>
-```
-
-### Step 6: Update config/database.php
-
-```php
-$db_host = getenv('DB_HOST') ?: 'localhost';
-$db_name = getenv('DB_NAME') ?: 'crmd_db';
-$db_user = getenv('DB_USER') ?: 'root';
-$db_pass = getenv('DB_PASS') ?: '';
-```
-
-### Step 7: Deploy
-
-- Click "Create Web Service"
-- Render will build and deploy automatically
-- Check logs for any errors
-- Your site will be live at: `https://crmd-xxxxx.onrender.com`
-
-### Step 8: Import Database on Remote
-
-1. Use phpMyAdmin on remote host (if available)
-2. Or import via command line:
-   ```bash
-   mysql -h <host> -u <user> -p <db> < sql/database.sql
-   ```
-
----
-
-## 📋 API Documentation
+## API Documentation
 
 ### Chart Data Endpoint
 
@@ -359,22 +292,22 @@ $db_pass = getenv('DB_PASS') ?: '';
 {
   "success": true,
   "riskByLevel": {
+    "critical": 0,
     "high": 3,
-    "medium": 2,
-    "low": 1
+    "medium": 3,
+    "low": 2
   },
   "incidentsByMonth": {
-    "2026-01": 5,
-    "2026-02": 3,
-    "2026-03": 7
+    "2026-03": 3,
+    "2026-04": 3
   },
-  "timestamp": "2026-05-09 10:30:45"
+  "timestamp": "2026-06-21 10:30:45"
 }
 ```
 
 ---
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### "Database Connection Failed"
 - Check `config/database.php` credentials
@@ -383,132 +316,51 @@ $db_pass = getenv('DB_PASS') ?: '';
 
 ### "Login page loops back to login"
 - Clear browser cookies
-- Check browser console for errors
-- Verify database has users table
+- Verify database has users table with sample data
 
 ### Charts not loading
 - Check browser console (F12) for errors
-- Verify `api/chart-data.php` is accessible
-- Ensure user is authenticated
+- Verify user is authenticated
 
 ### "Permission Denied" errors
-- Check that you're logged in as admin
 - Verify user role in database
 - Clear session and login again
 
 ---
 
-## 📱 Responsive Design
-
-The dashboard is fully responsive:
+## Responsive Design
 
 | Device | Status |
 |--------|--------|
-| **Desktop** (≥1024px) | ✅ Optimized |
-| **Tablet** (768-1023px) | ✅ Responsive |
-| **Mobile** (≤767px) | ✅ Mobile-first |
+| **Desktop** (>=1024px) | Optimized with sidebar |
+| **Tablet** (768-1023px) | Collapsible navigation |
+| **Mobile** (<=767px) | Mobile-first layout |
 
 ---
 
-## 🔑 Default Credentials (Change in Production!)
+## Version History
 
-| User | Username | Password | Role |
-|------|----------|----------|------|
-| Admin | `admin` | `admin123` | Full CRUD |
-| Viewer | `viewer` | `viewer123` | Read-only |
-| Manager | `manager` | `admin123` | Full CRUD |
+**Version 2.0** - June 2026
+- Role-based dashboards (Admin, Analyst, Viewer)
+- Complete audit log for all user activities
+- Scoped data views per user role
+- Critical risk level support
+- Activity tracking for login/logout and CRUD operations
+- Creator attribution on risks and incidents
 
----
-
-## 📄 File Size & Performance
-
-- **Total Code**: ~2,500 lines
-- **CSS**: ~500 lines
-- **JavaScript**: ~300 lines
-- **Optimized**: Yes (CDN for libraries)
-- **Load Time**: < 2 seconds (typical)
+**Version 1.0** - May 2026
+- Initial release with basic CRUD and authentication
 
 ---
 
-## 🔄 Maintenance
+## Academic Credits
 
-### Regular Tasks
+This dashboard was developed as a final year project in the Ordinary Diploma in Cybersecurity and Digital Forensics program at Arusha Technical College.
 
-1. **Backup Database**:
-   ```bash
-   mysqldump -u root -p crmd_db > backup.sql
-   ```
-
-2. **Update Dependencies** (if using Composer):
-   ```bash
-   composer update
-   ```
-
-3. **Monitor Logs**:
-   - Check `php_errors.log`
-   - Review application logs
-
-4. **Change Default Passwords**:
-   - Login as admin
-   - Update credentials in database
+**Methodology**: System Development Life Cycle (SDLC)
+**Design Pattern**: Three-Tier Architecture
+**Testing**: Functional, Usability, and Security Testing
 
 ---
 
-## 📚 References
-
-- NIST Cybersecurity Framework
-- OWASP Web Security Guidelines
-- Bootstrap 5 Documentation: https://getbootstrap.com
-- Chart.js Documentation: https://www.chartjs.org
-- PHP PDO: https://www.php.net/manual/en/book.pdo.php
-
----
-
-## 📞 Support & Contact
-
-- **Institution**: Arusha Technical College
-- **Website**: https://atc.ac.tz
-- **Email**: rector@atc.ac.tz
-- **Supervisor**: Mr. Peter Simalike
-
----
-
-## 📄 License
-
-This project is part of the Arusha Technical College curriculum. Use for educational purposes only.
-
----
-
-## ✅ Checklist Before Deployment
-
-- [ ] Database imported successfully
-- [ ] All sample data appears in dashboard
-- [ ] Login works with demo credentials
-- [ ] Can add/edit/delete risks (as admin)
-- [ ] Charts load and display data
-- [ ] Reports generate correctly
-- [ ] Mobile design is responsive
-- [ ] No console errors in browser
-- [ ] Session timeout works (30 minutes)
-- [ ] CSRF tokens validate correctly
-- [ ] Passwords are hashed in database
-
----
-
-**Version**: 1.0  
-**Last Updated**: May 2026  
-**Status**: Production Ready ✅
-
----
-
-## 🎓 Academic Credits
-
-This dashboard was developed as a final year project in the Ordinary Diploma in Cybersecurity and Digital Forensics program at Arusha Technical College, in fulfillment of academic requirements.
-
-**Project Development Methodology**: System Development Life Cycle (SDLC)  
-**Design Pattern**: Three-Tier Architecture  
-**Testing Approach**: Functional, Usability, and Security Testing
-
----
-
-For questions or issues, please contact your supervisor or the ICT Department at Arusha Technical College.
+For questions or issues, please contact the ICT Department at Arusha Technical College.
